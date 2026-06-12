@@ -36,5 +36,5 @@ export async function getStudent(id: number): Promise<Student> {
 }
 
 export async function deleteStudent(id: number): Promise<void> {
-// write code to delete student by id
+  // write code to delete student by id
 }

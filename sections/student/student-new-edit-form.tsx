@@ -1,7 +1,5 @@
-import React from 'react'
+import React from "react"
 
 export default function StudentNewEditForm() {
-  return (
-    <div>Student New/Edit Form</div>
-  )
+  return <div>Student New/Edit Form</div>
 }
