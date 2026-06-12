@@ -1,9 +1,8 @@
 import StudentCreateView from "@/sections/student/view/student-create-view"
-import React from "react"
 
 export default function StudentCreatePage() {
   return (
-    <div>
+    <div className="container mx-auto px-4 py-8">
       <StudentCreateView />
     </div>
   )
