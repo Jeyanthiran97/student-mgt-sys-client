@@ -1,15 +1,28 @@
+import { ApiValidationError } from "@/lib/api-validation-error"
 import type {
   Student,
   StudentApiResponse,
+  StudentInput,
+  StudentMutationResponse,
   StudentsApiResponse,
 } from "@/types/student"
 import axios from "axios"
 
 const API_URL = "https://jey-student-api.up.railway.app/api/students"
 
+type ApiErrorResponse = {
+  error?: string
+  errors?: string[]
+}
+
 function normalizeApiError(error: unknown, fallback: string): never {
   if (axios.isAxiosError(error)) {
-    const apiError = error.response?.data as { error?: string } | undefined
+    const apiError = error.response?.data as ApiErrorResponse | undefined
+
+    if (apiError?.errors?.length) {
+      throw new ApiValidationError(apiError.errors)
+    }
+
     if (apiError?.error) throw new Error(apiError.error)
   }
 
@@ -32,6 +45,30 @@ export async function getStudent(id: number): Promise<Student> {
     return data.student
   } catch (error) {
     normalizeApiError(error, "Failed to load student")
+  }
+}
+
+export async function createStudent(input: StudentInput): Promise<Student> {
+  try {
+    const { data } = await axios.post<StudentMutationResponse>(API_URL, input)
+    return data.student
+  } catch (error) {
+    normalizeApiError(error, "Failed to create student")
+  }
+}
+
+export async function updateStudent(
+  id: number,
+  input: StudentInput
+): Promise<Student> {
+  try {
+    const { data } = await axios.put<StudentMutationResponse>(
+      `${API_URL}/${id}`,
+      input
+    )
+    return data.student
+  } catch (error) {
+    normalizeApiError(error, "Failed to update student")
   }
 }
 

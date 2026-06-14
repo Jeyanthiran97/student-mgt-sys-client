@@ -3,18 +3,12 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import * as z from "zod"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
   Field,
   FieldDescription,
@@ -23,125 +17,296 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupText,
-  InputGroupTextarea,
-} from "@/components/ui/input-group"
+import { Switch } from "@/components/ui/switch"
+import { createStudent, updateStudent } from "@/services/student"
+import { isApiValidationError } from "@/lib/api-validation-error"
+import type { Student, StudentInput } from "@/types/student"
+import { useEffect } from "react"
 
 const formSchema = z.object({
-  title: z
+  full_name: z.string().trim().min(1, "Full name is required."),
+  email: z.string().trim().email("Enter a valid email address."),
+  cgpa: z
     .string()
-    .min(5, "Bug title must be at least 5 characters.")
-    .max(32, "Bug title must be at most 32 characters."),
-  description: z
+    .min(1, "CGPA is required.")
+    .refine((value) => !Number.isNaN(Number(value)), {
+      message: "CGPA must be a number.",
+    })
+    .refine((value) => Number(value) >= 0 && Number(value) <= 4, {
+      message: "CGPA must be between 0 and 4.",
+    }),
+  age: z
     .string()
-    .min(20, "Description must be at least 20 characters.")
-    .max(100, "Description must be at most 100 characters."),
+    .refine(
+      (value) =>
+        value === "" ||
+        (!Number.isNaN(Number(value)) &&
+          Number.isInteger(Number(value)) &&
+          Number(value) >= 1 &&
+          Number(value) <= 120),
+      { message: "Age must be a whole number between 1 and 120." }
+    ),
+  joined_date: z.string().min(1, "Joined date is required."),
+  is_active: z.boolean(),
 })
 
-export default function StudentNewEditForm() {
-  const form = useForm<z.infer<typeof formSchema>>({
+type FormValues = z.infer<typeof formSchema>
+
+type StudentNewEditFormProps = {
+  currentStudent?: Student
+}
+
+function getDefaultValues(currentStudent?: Student): FormValues {
+  return {
+    full_name: currentStudent?.full_name ?? "",
+    email: currentStudent?.email ?? "",
+    cgpa: currentStudent?.cgpa != null ? String(currentStudent.cgpa) : "",
+    age: currentStudent?.age != null ? String(currentStudent.age) : "",
+    joined_date: currentStudent?.joined_date ?? "",
+    is_active: currentStudent?.is_active ?? true,
+  }
+}
+
+function toStudentInput(values: FormValues): StudentInput {
+  return {
+    full_name: values.full_name,
+    email: values.email,
+    cgpa: Number(values.cgpa),
+    age: values.age === "" ? undefined : Number(values.age),
+    joined_date: values.joined_date,
+    is_active: values.is_active,
+  }
+}
+
+export default function StudentNewEditForm({
+  currentStudent,
+}: StudentNewEditFormProps) {
+  const router = useRouter()
+  const isEditMode = Boolean(currentStudent)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-    },
+    defaultValues: getDefaultValues(currentStudent),
   })
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    toast("You submitted the following values:", {
-      description: (
-        <pre className="bg-code text-code-foreground mt-2 w-[320px] overflow-x-auto rounded-md p-4">
-          <code>{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-      position: "bottom-right",
-      classNames: {
-        content: "flex flex-col gap-2",
-      },
-      style: {
-        "--border-radius": "calc(var(--radius)  + 4px)",
-      } as React.CSSProperties,
-    })
+  useEffect(() => {
+    form.reset(getDefaultValues(currentStudent))
+  }, [currentStudent, form])
+
+  async function onSubmit(values: FormValues) {
+    const payload = toStudentInput(values)
+
+    setIsSubmitting(true)
+
+    try {
+      if (isEditMode && currentStudent) {
+        await updateStudent(currentStudent.id, payload)
+        toast.success("Student updated successfully.")
+      } else {
+        await createStudent(payload)
+        toast.success("Student created successfully.")
+      }
+
+      router.push("/students")
+      router.refresh()
+    } catch (error) {
+      if (isApiValidationError(error)) {
+        for (const [field, message] of Object.entries(error.fieldErrors)) {
+          form.setError(field as keyof FormValues, {
+            type: "server",
+            message,
+          })
+        }
+
+        if (error.generalErrors.length > 0) {
+          toast.error(error.generalErrors.join(" "))
+        }
+
+        return
+      }
+
+      const message =
+        error instanceof Error ? error.message : "Something went wrong."
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <Card className="w-full sm:max-w-md">
-      <CardHeader>
-        <CardTitle>Bug Report</CardTitle>
-        <CardDescription>
-          Help us improve by reporting bugs you encounter.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form id="form-rhf-demo" onSubmit={form.handleSubmit(onSubmit)}>
+    <Card className="w-full">
+      <CardContent className="pt-6">
+        <form id="student-form" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
-            <Controller
-              name="title"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="form-rhf-demo-title">
-                    Bug Title
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="form-rhf-demo-title"
-                    aria-invalid={fieldState.invalid}
-                    placeholder="Login button not working on mobile"
-                    autoComplete="off"
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
-            <Controller
-              name="description"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="form-rhf-demo-description">
-                    Description
-                  </FieldLabel>
-                  <InputGroup>
-                    <InputGroupTextarea
+            <div className="grid gap-7 sm:grid-cols-2">
+              <Controller
+                name="full_name"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    data-invalid={fieldState.invalid}
+                    className="sm:col-span-2"
+                  >
+                    <FieldLabel htmlFor="student-full-name">Full Name</FieldLabel>
+                    <Input
                       {...field}
-                      id="form-rhf-demo-description"
-                      placeholder="I'm having an issue with the login button on mobile."
-                      rows={6}
-                      className="min-h-24 resize-none"
+                      id="student-full-name"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="John Doe"
+                      autoComplete="name"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="email"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    data-invalid={fieldState.invalid}
+                    className="sm:col-span-2"
+                  >
+                    <FieldLabel htmlFor="student-email">Email</FieldLabel>
+                    <Input
+                      {...field}
+                      id="student-email"
+                      type="email"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="john.doe@example.com"
+                      autoComplete="email"
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="cgpa"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="student-cgpa">CGPA</FieldLabel>
+                    <Input
+                      {...field}
+                      id="student-cgpa"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="4"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="3.50"
+                    />
+                    <FieldDescription>Scale from 0.00 to 4.00</FieldDescription>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="age"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="student-age">Age</FieldLabel>
+                    <Input
+                      {...field}
+                      id="student-age"
+                      type="number"
+                      min="1"
+                      max="120"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="20"
+                      value={field.value}
+                    />
+                    <FieldDescription>Optional</FieldDescription>
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="joined_date"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="student-joined-date">
+                      Joined Date
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="student-joined-date"
+                      type="date"
                       aria-invalid={fieldState.invalid}
                     />
-                    <InputGroupAddon align="block-end">
-                      <InputGroupText className="tabular-nums">
-                        {field.value.length}/100 characters
-                      </InputGroupText>
-                    </InputGroupAddon>
-                  </InputGroup>
-                  <FieldDescription>
-                    Include steps to reproduce, expected behavior, and what
-                    actually happened.
-                  </FieldDescription>
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                </Field>
-              )}
-            />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="is_active"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    orientation="horizontal"
+                    data-invalid={fieldState.invalid}
+                    className="items-center justify-between rounded-md border p-4"
+                  >
+                    <div className="space-y-1">
+                      <FieldLabel htmlFor="student-is-active">
+                        Active Status
+                      </FieldLabel>
+                      <FieldDescription>
+                        Inactive students are hidden from active lists.
+                      </FieldDescription>
+                    </div>
+                    <Switch
+                      id="student-is-active"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+            </div>
           </FieldGroup>
         </form>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="justify-end border-t">
         <Field orientation="horizontal">
-          <Button type="button" variant="outline" onClick={() => form.reset()}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => form.reset(getDefaultValues(currentStudent))}
+            disabled={isSubmitting}
+          >
             Reset
           </Button>
-          <Button type="submit" form="form-rhf-demo">
-            Submit
+          <Button type="submit" form="student-form" disabled={isSubmitting}>
+            {isSubmitting
+              ? isEditMode
+                ? "Saving..."
+                : "Creating..."
+              : isEditMode
+                ? "Save Changes"
+                : "Create Student"}
           </Button>
         </Field>
       </CardFooter>

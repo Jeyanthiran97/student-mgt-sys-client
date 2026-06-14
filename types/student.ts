@@ -16,3 +16,17 @@ export type StudentsApiResponse = {
 export type StudentApiResponse = {
   student: Student
 }
+
+export type StudentInput = {
+  full_name: string
+  email: string
+  cgpa: number
+  age?: number
+  joined_date?: string
+  is_active?: boolean
+}
+
+export type StudentMutationResponse = {
+  message: string
+  student: Student
+}

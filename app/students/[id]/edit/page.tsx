@@ -1,10 +1,15 @@
 import StudentEditView from "@/sections/student/view/student-edit-view"
-import React from "react"
 
-export default function StudentEditPage() {
+export default async function StudentEditPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+
   return (
-    <div>
-      <StudentEditView />
+    <div className="container mx-auto px-4 py-8">
+      <StudentEditView id={Number(id)} />
     </div>
   )
 }
