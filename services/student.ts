@@ -73,5 +73,9 @@ export async function updateStudent(
 }
 
 export async function deleteStudent(id: number): Promise<void> {
-  // write code to delete student by id
+  try {
+    await axios.delete(`${API_URL}/${id}`)
+  } catch (error) {
+    normalizeApiError(error, "Failed to delete student")
+  }
 }
