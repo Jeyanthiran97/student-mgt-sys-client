@@ -1,8 +1,17 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { getStudent } from "@/services/student"
 import type { Student } from "@/types/student"
+import { ArrowLeftIcon, PencilIcon } from "lucide-react"
 import Link from "next/link"
 import { useEffect, useState } from "react"
 
@@ -36,15 +45,50 @@ export default function StudentProfileView({ id }: StudentProfileViewProps) {
   }, [id])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Student Profile</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/students">Back to List</Link>
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/">Home</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/students">Students</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Student Profile</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <div className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Student Profile
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {student
+              ? `Viewing details for ${student.full_name}.`
+              : "View student information."}
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link href="/students">
+              <ArrowLeftIcon />
+              Back to List
+            </Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/">Back to Home</Link>
+          <Button asChild className="w-full sm:w-auto">
+            <Link href={`/students/${id}/edit`}>
+              <PencilIcon />
+              Edit Student
+            </Link>
           </Button>
         </div>
       </div>
