@@ -8,6 +8,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import Link from "next/link"
+import StudentNewEditForm from "../student-new-edit-form"
 
 export default function StudentCreateView() {
   return (
@@ -40,9 +41,7 @@ export default function StudentCreateView() {
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground">
-        Student create form coming soon.
-      </p>
+      <StudentNewEditForm />
     </div>
   )
 }
