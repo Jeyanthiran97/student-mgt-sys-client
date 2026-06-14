@@ -1,4 +1,4 @@
-const FORM_FIELDS = [
+export const STUDENT_FORM_FIELDS = [
   "full_name",
   "email",
   "cgpa",
@@ -7,20 +7,30 @@ const FORM_FIELDS = [
   "is_active",
 ] as const
 
-export type StudentFormField = (typeof FORM_FIELDS)[number]
+export type StudentFormField = (typeof STUDENT_FORM_FIELDS)[number]
 
-export class ApiValidationError extends Error {
-  fieldErrors: Partial<Record<StudentFormField, string>>
+export const COURSE_FORM_FIELDS = [
+  "course_title",
+  "description",
+  "course_fee",
+  "duration_months",
+  "is_available",
+] as const
+
+export type CourseFormField = (typeof COURSE_FORM_FIELDS)[number]
+
+export class ApiValidationError<T extends string = string> extends Error {
+  fieldErrors: Partial<Record<T, string>>
   generalErrors: string[]
 
-  constructor(errors: string[]) {
+  constructor(errors: string[], fields: readonly T[]) {
     super(errors.join(" "))
     this.name = "ApiValidationError"
     this.fieldErrors = {}
     this.generalErrors = []
 
     for (const message of errors) {
-      const field = mapApiErrorToField(message)
+      const field = mapApiErrorToField(message, fields)
 
       if (field) {
         this.fieldErrors[field] = message
@@ -31,31 +41,27 @@ export class ApiValidationError extends Error {
   }
 }
 
-function mapApiErrorToField(message: string): StudentFormField | null {
+function mapApiErrorToField<T extends string>(
+  message: string,
+  fields: readonly T[]
+): T | null {
   const normalized = message.toLowerCase()
 
-  for (const field of FORM_FIELDS) {
+  for (const field of fields) {
     if (
       normalized.startsWith(field) ||
-      normalized.startsWith(field.replace("_", " "))
+      normalized.startsWith(field.replace(/_/g, " "))
     ) {
       return field
     }
   }
 
-  if (normalized.includes("email")) return "email"
-  if (normalized.includes("full name") || normalized.includes("full_name")) {
-    return "full_name"
+  for (const field of fields) {
+    const label = field.replace(/_/g, " ")
+    if (normalized.includes(label) || normalized.includes(field)) {
+      return field
+    }
   }
-  if (normalized.includes("cgpa")) return "cgpa"
-  if (normalized.includes("age")) return "age"
-  if (
-    normalized.includes("joined date") ||
-    normalized.includes("joined_date")
-  ) {
-    return "joined_date"
-  }
-  if (normalized.includes("active")) return "is_active"
 
   return null
 }
